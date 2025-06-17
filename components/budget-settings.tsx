@@ -11,52 +11,58 @@ import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { AlertTriangle, CheckCircle, Save } from "lucide-react"
 
-const budgetCategories = [
-  {
-    category: "Food & Dining",
-    budget: 500,
-    spent: 456.78,
-    color: "bg-orange-500",
-  },
-  {
-    category: "Transportation",
-    budget: 300,
-    spent: 234.5,
-    color: "bg-blue-500",
-  },
-  {
-    category: "Shopping",
-    budget: 200,
-    spent: 189.99,
-    color: "bg-pink-500",
-  },
-  {
-    category: "Bills & Utilities",
-    budget: 400,
-    spent: 156.78,
-    color: "bg-yellow-500",
-  },
-  {
-    category: "Entertainment",
-    budget: 150,
-    spent: 98.45,
-    color: "bg-purple-500",
-  },
-  {
-    category: "Healthcare",
-    budget: 100,
-    spent: 67.3,
-    color: "bg-green-500",
-  },
+const initialCategories = [
+  { category: "Food & Dining", budget: 500, spent: 456.78, color: "bg-orange-500" },
+  { category: "Transportation", budget: 300, spent: 234.5, color: "bg-blue-500" },
+  { category: "Shopping", budget: 200, spent: 189.99, color: "bg-pink-500" },
+  { category: "Bills & Utilities", budget: 400, spent: 156.78, color: "bg-yellow-500" },
+  { category: "Entertainment", budget: 150, spent: 98.45, color: "bg-purple-500" },
+  { category: "Healthcare", budget: 100, spent: 67.3, color: "bg-green-500" },
 ]
 
 export function BudgetSettings() {
-  const [monthlyBudget, setMonthlyBudget] = useState(2000)
+  const [budgetCategories, setBudgetCategories] = useState(initialCategories)
   const [alertsEnabled, setAlertsEnabled] = useState(true)
   const [alertThreshold, setAlertThreshold] = useState(80)
 
   const totalSpent = budgetCategories.reduce((sum, cat) => sum + cat.spent, 0)
   const totalBudget = budgetCategories.reduce((sum, cat) => sum + cat.budget, 0)
+
+  const logBudget = async () => {
+    try {
+      const response = await fetch("https://hgwz3olg12.execute-api.eu-north-1.amazonaws.com/budgets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: "user123", // replace with dynamic value
+          month: new Date().toISOString().slice(0, 7), // "YYYY-MM"
+          totalBudget,
+          categories: budgetCategories.map((cat) => ({
+            name: cat.category,
+            budget: cat.budget,
+            spent: cat.spent,
+          })),
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) throw new Error(data.error || "Failed to log budget")
+
+      alert("Budget saved successfully!")
+    } catch (error) {
+      console.error("Error logging budget:", error)
+      alert("Failed to save budget.")
+    }
+  }
+
+  const handleBudgetChange = (index: number, value: number) => {
+    const updated = [...budgetCategories]
+    updated[index].budget = value
+    setBudgetCategories(updated)
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -71,7 +77,6 @@ export function BudgetSettings() {
       </header>
 
       <div className="flex-1 p-4 space-y-6">
-        {/* Overall Budget */}
         <Card>
           <CardHeader>
             <CardTitle>Monthly Budget Overview</CardTitle>
@@ -84,15 +89,18 @@ export function BudgetSettings() {
                 <p className="text-sm text-muted-foreground">of ${totalBudget.toFixed(2)} spent</p>
               </div>
               <div className="text-right">
-                <p className="text-lg font-semibold text-green-600">${(totalBudget - totalSpent).toFixed(2)} left</p>
-                <p className="text-sm text-muted-foreground">{Math.round((totalSpent / totalBudget) * 100)}% used</p>
+                <p className="text-lg font-semibold text-green-600">
+                  ${(totalBudget - totalSpent).toFixed(2)} left
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {Math.round((totalSpent / totalBudget) * 100)}% used
+                </p>
               </div>
             </div>
             <Progress value={(totalSpent / totalBudget) * 100} className="h-3" />
           </CardContent>
         </Card>
 
-        {/* Category Budgets */}
         <Card>
           <CardHeader>
             <CardTitle>Category Budgets</CardTitle>
@@ -100,7 +108,7 @@ export function BudgetSettings() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {budgetCategories.map((category) => {
+              {budgetCategories.map((category, index) => {
                 const percentage = (category.spent / category.budget) * 100
                 const isOverBudget = percentage > 100
                 const isNearLimit = percentage > alertThreshold && !isOverBudget
@@ -138,7 +146,14 @@ export function BudgetSettings() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <Progress value={Math.min(percentage, 100)} className="flex-1 h-2" />
-                      <Input type="number" value={category.budget} className="w-20 h-8 text-xs" min="0" step="10" />
+                      <Input
+                        type="number"
+                        value={category.budget}
+                        onChange={(e) => handleBudgetChange(index, Number(e.target.value))}
+                        className="w-20 h-8 text-xs"
+                        min="0"
+                        step="10"
+                      />
                     </div>
                   </div>
                 )
@@ -147,7 +162,6 @@ export function BudgetSettings() {
           </CardContent>
         </Card>
 
-        {/* Alert Settings */}
         <Card>
           <CardHeader>
             <CardTitle>Alert Settings</CardTitle>
@@ -159,7 +173,9 @@ export function BudgetSettings() {
                 <Label htmlFor="alerts-enabled" className="text-base font-medium">
                   Enable Spending Alerts
                 </Label>
-                <p className="text-sm text-muted-foreground">Get notified when you approach your budget limits</p>
+                <p className="text-sm text-muted-foreground">
+                  Get notified when you approach your budget limits
+                </p>
               </div>
               <Switch id="alerts-enabled" checked={alertsEnabled} onCheckedChange={setAlertsEnabled} />
             </div>
@@ -185,7 +201,7 @@ export function BudgetSettings() {
               </div>
             )}
 
-            <Button className="w-full sm:w-auto">
+            <Button className="w-full sm:w-auto" onClick={logBudget}>
               <Save className="h-4 w-4 mr-2" />
               Save Settings
             </Button>

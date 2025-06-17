@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -8,9 +8,41 @@ import { AddExpenseDialog } from "@/components/add-expense-dialog"
 import { ExpenseChart } from "@/components/expense-chart"
 import { RecentExpenses } from "@/components/recent-expenses"
 import { ArrowDownIcon, ArrowUpIcon, CreditCard, DollarSign, Plus, TrendingUp, Wallet } from "lucide-react"
+// import { Auth } from "aws-amplify"
 
 export function DashboardContent() {
   const [showAddExpense, setShowAddExpense] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [dashboardData, setDashboardData] = useState({
+    totalBalance: 0,
+    monthlySpend: 0,
+    remainingBudget: 0,
+    averageDailySpend: 0,
+  })
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const user = "user-123"
+        // const uid = user.attributes.sub
+        setUserId(user)
+
+        const response = await fetch(`https://hgwz3olg12.execute-api.eu-north-1.amazonaws.com/dashboard?userId=${user}`)
+        const data = await response.json()
+
+        setDashboardData({
+          totalBalance: data.totalBalance,
+          monthlySpend: data.monthlySpend,
+          remainingBudget: data.remainingBudget,
+          averageDailySpend: data.averageDailySpend,
+        })
+      } catch (error) {
+        console.error("Failed to load dashboard data", error)
+      }
+    }
+
+    fetchDashboardData()
+  }, [])
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -22,10 +54,6 @@ export function DashboardContent() {
             <p className="text-muted-foreground">Track your expenses and manage your budget</p>
           </div>
         </div>
-        <Button onClick={() => setShowAddExpense(true)} className="hidden sm:flex">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Expense
-        </Button>
       </header>
 
       <div className="flex-1 p-4 space-y-6">
@@ -37,7 +65,7 @@ export function DashboardContent() {
               <Wallet className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">$2,350.00</div>
+              <div className="text-2xl font-bold">${dashboardData.totalBalance.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
                 <span className="text-green-600 flex items-center">
                   <ArrowUpIcon className="h-3 w-3 mr-1" />
@@ -54,7 +82,7 @@ export function DashboardContent() {
               <CreditCard className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">$1,234.56</div>
+              <div className="text-2xl font-bold">${dashboardData.monthlySpend.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">
                 <span className="text-red-600 flex items-center">
                   <ArrowDownIcon className="h-3 w-3 mr-1" />
@@ -71,8 +99,10 @@ export function DashboardContent() {
               <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">$765.44</div>
-              <p className="text-xs text-muted-foreground">38% of monthly budget</p>
+              <div className="text-2xl font-bold">${dashboardData.remainingBudget.toFixed(2)}</div>
+              <p className="text-xs text-muted-foreground">
+                {Math.round((dashboardData.remainingBudget / (dashboardData.remainingBudget + dashboardData.monthlySpend)) * 100)}% of monthly budget
+              </p>
             </CardContent>
           </Card>
 
@@ -82,7 +112,7 @@ export function DashboardContent() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">$41.15</div>
+              <div className="text-2xl font-bold">${dashboardData.averageDailySpend.toFixed(2)}</div>
               <p className="text-xs text-muted-foreground">Based on this month</p>
             </CardContent>
           </Card>
@@ -121,7 +151,6 @@ export function DashboardContent() {
         <Plus className="h-6 w-6" />
       </Button>
 
-      <AddExpenseDialog open={showAddExpense} onOpenChange={setShowAddExpense} />
     </div>
   )
 }

@@ -56,7 +56,7 @@ export function ExpenseList() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
 
-  const userId = "user-kushagrasinghonline@gmail.com"
+  const userId = "user-123"
 
   const fetchExpenses = async () => {
     setLoading(true)
