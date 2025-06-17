@@ -2,15 +2,33 @@
 
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { AddExpenseDialog } from "@/components/add-expense-dialog"
 import { Edit, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react"
-import { getExpenses, logExpense } from "@/utils/api"
+import { getExpenses, logExpense, deleteExpense } from "@/utils/api"
 
 interface Expense {
   userId: string
@@ -37,7 +55,8 @@ export function ExpenseList() {
   const [searchTerm, setSearchTerm] = useState("")
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
-  const userId = "user-123" // For demo; replace with actual auth-based userId
+
+  const userId = "user-kushagrasinghonline@gmail.com"
 
   const fetchExpenses = async () => {
     setLoading(true)
@@ -55,20 +74,40 @@ export function ExpenseList() {
     fetchExpenses()
   }, [])
 
-  const handleAddExpense = async (newExpense: Omit<Expense, "timestamp" | "userId">) => {
+  const handleAddExpense = async (
+    newExpense: Omit<Expense, "timestamp" | "userId" | "note"> & { description: string }
+  ) => {
     try {
       const timestamp = new Date().toISOString()
-      await logExpense({ ...newExpense, timestamp, userId })
+      await logExpense({
+        userId,
+        timestamp,
+        amount: newExpense.amount,
+        category: newExpense.category,
+        note: newExpense.description,
+      })
       await fetchExpenses()
     } catch (error) {
       console.error("Failed to add expense", error)
     }
   }
 
+  const handleDeleteExpense = async (timestamp: string) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this expense?")
+    if (!confirmDelete) return
+
+    try {
+      await deleteExpense(userId, timestamp)
+      await fetchExpenses()
+    } catch (error) {
+      console.error("Failed to delete expense", error)
+    }
+  }
+
   const filteredExpenses = expenses.filter(
     (expense) =>
       expense.note?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      expense.category.toLowerCase().includes(searchTerm.toLowerCase()),
+      expense.category.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   return (
@@ -133,7 +172,9 @@ export function ExpenseList() {
                               >
                                 {expense.category}
                               </Badge>
-                              <span className="text-xs text-muted-foreground ml-2">{new Date(expense.timestamp).toLocaleDateString()}</span>
+                              <span className="text-xs text-muted-foreground ml-2">
+                                {new Date(expense.timestamp).toLocaleDateString()}
+                              </span>
                             </div>
                           </div>
                         </TableCell>
@@ -145,8 +186,12 @@ export function ExpenseList() {
                             {expense.category}
                           </Badge>
                         </TableCell>
-                        <TableCell className="hidden md:table-cell">{new Date(expense.timestamp).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right font-medium">${expense.amount.toFixed(2)}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {new Date(expense.timestamp).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right font-medium">
+                          ${expense.amount.toFixed(2)}
+                        </TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -159,7 +204,10 @@ export function ExpenseList() {
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="text-red-600">
+                              <DropdownMenuItem
+                                className="text-red-600"
+                                onClick={() => handleDeleteExpense(expense.timestamp)}
+                              >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
                               </DropdownMenuItem>
